@@ -125,7 +125,7 @@ def test_model(config, test_batches, character_indices, word_indices, num_review
             next_word = ""
             num_sentences = 0
 #
-            while next_word != ">>>>" and num_sentences < 20: # stop at end-of-review token ">>>>"
+            while next_word != ">>>>" and num_sentences < 20 and len(review) < 500:
                 features = arrays2features(arrays, max_num_words)
                 word_lens_ = np.pad(word_lens[-seq_len:], [0, max_num_words - seq_len], mode = "constant")
                 word_lens_ = np.expand_dims(word_lens_, axis = 0)
@@ -142,8 +142,8 @@ def test_model(config, test_batches, character_indices, word_indices, num_review
                 arrays.append(arr)
                 seq_len = min(seq_len+1, max_num_words)
 #
-                review_so_far = " ".join(review)
-                sys.stdout.print(f"\r{review_so_far}")
+                # review_so_far = " ".join(review)
+                # sys.stdout.write(f"\r{review_so_far}")
 #
             reviews.append(review)
 #
