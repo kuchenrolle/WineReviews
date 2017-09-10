@@ -77,7 +77,7 @@ def train_model(config, train_batches, validation_batch, use_topics = False, ver
                 sys.stdout.write(f"\nepoch {epoch} - train loss: {train_loss:.2f}, validation loss: {validation_loss:.2f}, validation acc: {accuracy:.2f}, took: {took:.1f}s\n")
 
 
-def test_model(config, test_batches, character_indices, word_indices, num_reviews_to_produce, use_topics = False, verbose = True):
+def test(config, test_batches, character_indices, word_indices, num_reviews_to_produce, use_topics = False, verbose = True):
     test_features, test_labels, test_seq_lens, test_word_lens, test_topics = test_batches
     num_batches = test_features.shape[0]
     max_word_len = test_features.shape[-1]
@@ -101,7 +101,7 @@ def test_model(config, test_batches, character_indices, word_indices, num_review
             if verbose:
                 sys.stdout.write(f"\rtest batch {batch+1} of {test_features.shape[0]}")
             loss, acc = sess.run([test_model.loss, test_model.accuracy], {
-                test_model.x: test_features[batch], test_model.seq_lens: test_seq_lens[batch], test_model.word_lens: test_word_lens[batch], test_model.y: test_labels[batch], test_mode.topics: test_topics[batch]})
+                test_model.x: test_features[batch], test_model.seq_lens: test_seq_lens[batch], test_model.word_lens: test_word_lens[batch], test_model.y: test_labels[batch], test_model.topics: test_topics[batch]})
             test_loss += loss
             accuracy += acc
 #
@@ -117,6 +117,7 @@ def test_model(config, test_batches, character_indices, word_indices, num_review
         for _ in range(num_reviews_to_produce):
             choice = np.random.choice(range(test_topics.shape[1]))
             topic_distribution = test_topics[0][choice]
+            np.expand_dims(topic_distribution, axis = 0)
 #
             review = ["<<<<"] # seed with beginning-of-review token "<<<<"
             arrays = [word2array("<<<<", character_indices, max_word_len)]
@@ -264,7 +265,7 @@ train_model(config, train_batches, validation_batch)
 # train_model(config, train_batches, train_batches)
 
 # test the model
-accuracy, perplexity, reviews = test_model(config,
+accuracy, perplexity, reviews = test(config,
                 test_batches,
                 character_indices,
                 word_indices,
@@ -277,11 +278,10 @@ tf.reset_default_graph()
 train_model(config, train_batches, validation_batch, use_topics = True)
 
 # and test
-accuracy_topics, perplexity_topics, reviews_topics = test_model(config,
+accuracy_topics, perplexity_topics, reviews_topics = test(config,
                 test_batches,
                 character_indices,
                 word_indices,
-                max_word_len,
-                config.um_reviews_to_produce,
+                config.num_reviews_to_produce,
                 use_topics = True)
 

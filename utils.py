@@ -190,7 +190,7 @@ def make_samples(documents, topics, num_samples, max_steps, max_word_len, dont_p
 #
     samples = np.zeros((num_samples, max_steps, max_word_len), dtype = np.int32)
     labels = np.zeros((num_samples), dtype = np.int32)
-    tops = np.zeros((num_samples, num_topics), dtype = np.int32)
+    tops = np.zeros((num_samples, num_topics), dtype = np.float32)
     sequence_lengths = np.zeros((num_samples), dtype = np.int32)
     word_lengths = np.zeros((num_samples, max_steps), dtype = np.int32)
 #
