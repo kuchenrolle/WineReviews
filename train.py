@@ -77,7 +77,7 @@ def train_model(config, train_batches, validation_batch, use_topics = False, ver
                 sys.stdout.write(f"\nepoch {epoch} - train loss: {train_loss:.2f}, validation loss: {validation_loss:.2f}, validation acc: {accuracy:.2f}, took: {took:.1f}s\n")
 
 
-def test(config, test_batches, character_indices, word_indices, num_reviews_to_produce, use_topics = False, verbose = True):
+def test_and_generate(config, test_batches, character_indices, word_indices, num_reviews_to_produce, use_topics = False, verbose = True):
     test_features, test_labels, test_seq_lens, test_word_lens, test_topics = test_batches
     num_batches = test_features.shape[0]
     max_word_len = test_features.shape[-1]
@@ -117,7 +117,7 @@ def test(config, test_batches, character_indices, word_indices, num_reviews_to_p
         for _ in range(num_reviews_to_produce):
             choice = np.random.choice(range(test_topics.shape[1]))
             topic_distribution = test_topics[0][choice]
-            np.expand_dims(topic_distribution, axis = 0)
+            topic_distribution = np.expand_dims(topic_distribution, axis = 0)
 #
             review = ["<<<<"] # seed with beginning-of-review token "<<<<"
             arrays = [word2array("<<<<", character_indices, max_word_len)]
@@ -132,7 +132,7 @@ def test(config, test_batches, character_indices, word_indices, num_reviews_to_p
                 word_lens_ = np.expand_dims(word_lens_, axis = 0)
 #
                 [probabilities] = sess.run([predict_model.probs], {
-                    predict_model.x: features, predict_model.seq_lens: np.array([seq_len]), predict_model.word_lens: word_lens_})
+                    predict_model.x: features, predict_model.seq_lens: np.array([seq_len]), predict_model.word_lens: word_lens_, predict_model.topics:topic_distribution})
                 next_word = sample(vocabulary, probabilities[0][1:], config.temperature)
                 word_lens.append(len(next_word))
                 review.append(next_word)
@@ -265,7 +265,7 @@ train_model(config, train_batches, validation_batch)
 # train_model(config, train_batches, train_batches)
 
 # test the model
-accuracy, perplexity, reviews = test(config,
+accuracy, perplexity, reviews = test_and_generate(config,
                 test_batches,
                 character_indices,
                 word_indices,
@@ -278,7 +278,7 @@ tf.reset_default_graph()
 train_model(config, train_batches, validation_batch, use_topics = True)
 
 # and test
-accuracy_topics, perplexity_topics, reviews_topics = test(config,
+accuracy_topics, perplexity_topics, reviews_topics = test_and_generate(config,
                 test_batches,
                 character_indices,
                 word_indices,
