@@ -20,7 +20,7 @@ from utils import DocumentProcessor, make_samples, Numberer
 num_topics = 50
 
 
-def train_model(config, train_batches, validation_batch, use_topics = False, verbose = True, reuse = False):
+def train_model(config, train_batches, validation_batch, use_topics = False, verbose = True, reuse = False, scope_name = "model"):
     train_features, train_labels, train_seq_lens, train_word_lens, train_topics = train_batches
     validation_features, validation_labels, validation_seq_lens, validation_word_lens, validation_topics = validation_batch
 #
@@ -28,18 +28,19 @@ def train_model(config, train_batches, validation_batch, use_topics = False, ver
     config.use_topics = use_topics
 #
     with tf.Session() as sess:
-        with tf.variable_scope("model", reuse = reuse):
+        with tf.variable_scope(scope_name, reuse = reuse):
             train_model = Model(
                 config,
                 phase = Phase.Train)
 #
-        with tf.variable_scope("model", reuse = True):
+        with tf.variable_scope(scope_name, reuse = True):
             validation_model = Model(
                 config,
                 phase = Phase.Validation)
 #
         sess.run(tf.global_variables_initializer())
 #
+        all_validation_losses = list()
         for epoch in range(config.n_epochs):
             start = time()
             train_loss = 0.0
@@ -63,6 +64,7 @@ def train_model(config, train_batches, validation_batch, use_topics = False, ver
                     validation_model.x: validation_features[batch], validation_model.seq_lens: validation_seq_lens[batch], validation_model.word_lens: validation_word_lens[batch], validation_model.y: validation_labels[batch], validation_model.topics: validation_topics[batch]})
                 validation_loss += loss
                 accuracy += acc
+                all_validation_losses.append(loss)
 #
             # normalize
             # validation_loss = validation_loss / config.validation_batch_size * config.batch_size
@@ -75,9 +77,10 @@ def train_model(config, train_batches, validation_batch, use_topics = False, ver
 #
             if verbose:
                 sys.stdout.write(f"\nepoch {epoch} - train loss: {train_loss:.2f}, validation loss: {validation_loss:.2f}, validation acc: {accuracy:.2f}, took: {took:.1f}s\n")
+    return all_validation_losses
 
 
-def test_and_generate(config, test_batches, character_indices, word_indices, num_reviews_to_produce, use_topics = False, verbose = True):
+def test_and_generate(config, test_batches, character_indices, word_indices, num_reviews_to_produce, use_topics = False, verbose = True, scope_name = "model"):
     test_features, test_labels, test_seq_lens, test_word_lens, test_topics = test_batches
     num_batches = test_features.shape[0]
     max_word_len = test_features.shape[-1]
@@ -85,11 +88,11 @@ def test_and_generate(config, test_batches, character_indices, word_indices, num
     config.use_topics = use_topics
 #
     with tf.Session() as sess:
-        with tf.variable_scope("model", reuse = True):
+        with tf.variable_scope(scope_name, reuse = True):
             test_model = Model(
                 config,
                 phase = Phase.Validation)
-        with tf.variable_scope("model", reuse = True):
+        with tf.variable_scope(scope_name, reuse = True):
             predict_model = Model(config)
 #
         sess.run(tf.global_variables_initializer())
@@ -133,10 +136,10 @@ def test_and_generate(config, test_batches, character_indices, word_indices, num
 #
                 [probabilities] = sess.run([predict_model.probs], {
                     predict_model.x: features, predict_model.seq_lens: np.array([seq_len]), predict_model.word_lens: word_lens_, predict_model.topics:topic_distribution})
-                next_word = sample(vocabulary, probabilities[0][1:], config.temperature)
+                next_word = sample(vocabulary[1:], probabilities[0][2:], config.temperature)
                 word_lens.append(len(next_word))
                 review.append(next_word)
-                if next_word == ".":
+                if next_word in ["?","!","."]:
                     num_sentences += 1
                 arr = word2array(next_word, character_indices, max_word_len)
 #
@@ -190,7 +193,7 @@ config = DefaultConfig()
 
 # preprocessing
 vkns = pd.read_pickle("data/vkns_with_topics.pkl")[["VKN","topics"]]
-vkns = vkns.sample(frac = 0.05)
+vkns = vkns.sample(frac = 0.3)
 vkns = vkns.reset_index()
 topics = vkns.topics
 preprocessor = DocumentProcessor(vkns.VKN.values)
@@ -261,7 +264,7 @@ config.num_topics = num_topics
 
 
 # train the model
-train_model(config, train_batches, validation_batch)
+all_losses = train_model(config, train_batches, validation_batch)
 # train_model(config, train_batches, train_batches)
 
 # test the model
@@ -272,10 +275,10 @@ accuracy, perplexity, reviews = test_and_generate(config,
                 config.num_reviews_to_produce)
 
 # reset
-tf.reset_default_graph()
+# tf.reset_default_graph()
 
 # now train with topic distributions
-train_model(config, train_batches, validation_batch, use_topics = True)
+all_losses_topics = train_model(config, train_batches, validation_batch, use_topics = True, scope_name = "model_topics")
 
 # and test
 accuracy_topics, perplexity_topics, reviews_topics = test_and_generate(config,
@@ -283,5 +286,5 @@ accuracy_topics, perplexity_topics, reviews_topics = test_and_generate(config,
                 character_indices,
                 word_indices,
                 config.num_reviews_to_produce,
-                use_topics = True)
+                use_topics = True, scope_name = "model_topics")
 

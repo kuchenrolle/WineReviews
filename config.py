@@ -1,16 +1,16 @@
 class DefaultConfig:
     n_epochs = 5
     batch_size = 300
-    validation_batch_size = 300
+    validation_batch_size = 450
     max_timesteps = 10
-    only_most_frequent = 5000
+    only_most_frequent = 1000
     num_topics = 50
 #
-    temperature = 1 # for text generation
+    temperature = 2 # for text generation
     num_reviews_to_produce = 5
 #
-    decay_rate = .9
-    learning_rate = 0.01
+    decay_rate = .95
+    learning_rate = 0.1
     input_dropout = 1.0
     hidden_dropout = 0.5
 #
