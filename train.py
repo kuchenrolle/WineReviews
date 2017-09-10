@@ -101,7 +101,7 @@ def test_model(config, test_batches, character_indices, word_indices, num_review
             if verbose:
                 sys.stdout.write(f"\rtest batch {batch+1} of {test_features.shape[0]}")
             loss, acc = sess.run([test_model.loss, test_model.accuracy], {
-                test_model.x: test_features[batch], test_model.seq_lens: test_seq_lens[batch], test_model.word_lens: test_word_lens[batch], test_model.y: test_labels[batch]})
+                test_model.x: test_features[batch], test_model.seq_lens: test_seq_lens[batch], test_model.word_lens: test_word_lens[batch], test_model.y: test_labels[batch], test_mode.topics: test_topics[batch]})
             test_loss += loss
             accuracy += acc
 #
@@ -115,8 +115,8 @@ def test_model(config, test_batches, character_indices, word_indices, num_review
         vocabulary = word_indices.names
 #
         for _ in range(num_reviews_to_produce):
-            topic_distribution = np.random.uniform(0, 1, config.num_topics)
-            topic_distribution = topic_distribution/np.sum(topic_distribution)
+            choice = np.random.choice(range(test_topics.shape[1]))
+            topic_distribution = test_topics[0][choice]
 #
             review = ["<<<<"] # seed with beginning-of-review token "<<<<"
             arrays = [word2array("<<<<", character_indices, max_word_len)]
@@ -142,8 +142,8 @@ def test_model(config, test_batches, character_indices, word_indices, num_review
                 arrays.append(arr)
                 seq_len = min(seq_len+1, max_num_words)
 #
-                # review_so_far = " ".join(review)
-                # sys.stdout.write(f"\r{review_so_far}")
+                review_so_far = " ".join(review)
+                sys.stdout.write(f"\r{review_so_far}")
 #
             reviews.append(review)
 #
